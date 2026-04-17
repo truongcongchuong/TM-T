@@ -1,0 +1,124 @@
+import 'package:backend/shared/enum/notification_type_enum.dart';
+import 'package:postgres/postgres.dart';
+import 'dart:convert';
+
+class NotificationTypeModel {
+  final int id;
+  final String code;
+  final String name;
+  final String? description;
+  final bool isActive;
+
+  NotificationTypeModel({
+    required this.id,
+    required this.code,
+    required this.name,
+    this.description,
+    required this.isActive,
+  });
+
+  factory NotificationTypeModel.fromMap(Map<String, dynamic> map) {
+    return NotificationTypeModel(
+      id: map['id'],
+      code: map['code'],
+      name: map['name'],
+      description: map['description'],
+      isActive: map['is_active'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'code': code,
+      'name': name,
+      'description': description,
+      'is_active': isActive,
+    };
+  }
+}
+
+
+class NotificationModel {
+  final int? id;
+  final int userId;
+
+  final NotificationTypeEnum type;
+
+  final String? title;
+  final String? body;
+  final Map<String, dynamic>? payload;
+
+  final bool? isRead;
+  final DateTime createdAt;
+
+  NotificationModel({
+    this.id,
+    required this.userId,
+    required this.type,
+    this.title,
+    this.body,
+    this.payload,
+    this.isRead = false,  
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+
+  factory NotificationModel.fromMap(Map<String, dynamic> map) {
+    return NotificationModel(
+      id: map['id'],
+      userId: map['user_id'],
+      type: NotificationTypeExtension.fromCode(map['type']),
+      title: map['title'],
+      body: map['body'],
+      payload: map['payload'] == null
+          ? null
+          : map['payload'] is Map
+              ? Map<String, dynamic>.from(map['payload'])
+              : jsonDecode(map['payload']),
+      isRead: map['is_read'] ?? false,
+      createdAt: map['created_at'] is DateTime
+          ? map['created_at']
+          : DateTime.parse(map['created_at']),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'type': type.code,
+      'title': title,
+      'body': body,
+      'payload': payload,
+      'is_read': isRead,
+      'created_at': createdAt.toIso8601String(),
+    };
+  }
+
+  NotificationModel copyWith({
+    int? id,
+    int? userId,
+    NotificationTypeEnum? type,
+    String? title,
+    String? body,
+    Map<String, dynamic>? payload,
+    bool? isRead,
+    DateTime? createdAt,
+  }) {
+    return NotificationModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      type: type ?? this.type,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      payload: payload ?? this.payload,
+      isRead: isRead ?? this.isRead,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  factory NotificationModel.fromRow(ResultRow row) {
+    final data = row.toColumnMap(); // chuyển sang map theo tên cột
+    return NotificationModel.fromMap(data);
+  }
+}
