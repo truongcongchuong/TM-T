@@ -7,7 +7,7 @@ const int port = 8080;
 // Cấu hình kết nối PostgreSQL
 const String dbHost = 'localhost';
 const int dbPort = 5432;
-const String dbName = 'db_ordering_app';
+const String dbName = 'app_ordering';
 const String dbUsername = 'postgres';
 const String dbPassword = 'Danit@123';
 

@@ -1,10 +1,11 @@
-import 'package:backend/shared/models/food_model.dart';
+
+import 'package:backend/shared/models/food_response.dart';
 import 'package:postgres/postgres.dart';
 import 'package:backend/core/config/database.dart';
 
 class RecommendService {
 
-  Future<List<FoodModel>> getRecommendations(int foodIdInput) async {
+  Future<List<FoodResponse>> getRecommendations(int foodIdInput) async {
 
     final conn = await DatabaseConfig.connection();
 
@@ -78,14 +79,39 @@ class RecommendService {
 
       // GET FOOD LIST
       final foods = await conn.execute(
-        Sql.named('''
-        SELECT * FROM foods
-        WHERE id = ANY(@topId::int[])
+        Sql.named(''' 
+          SELECT 
+          -- FOOD
+          f.id AS food_id,
+          f.name AS food_name,
+          f.price,
+          f.description,
+          f.image_url,
+          f.rating_avg AS food_rating_avg,
+          f.is_available,
+          f.category_id,
+          f.restaurant_id,
+          f.preparation_time,
+
+          -- RESTAURANT
+          r.id AS restaurant_id,
+          r.name AS restaurant_name,
+          r.owner,
+          r.address,
+          r.latitude,
+          r.longitude,
+          r.is_open,
+          r.rating_avg AS restaurant_rating_avg,
+          r.created_at
+
+        FROM foods f
+        JOIN restaurants r ON f.restaurant_id = r.id 
+        WHERE r.id = ANY(@topId::int[])
         '''),
         parameters: {"topId": topIds},
       );
 
-      return foods.map((row) => FoodModel.fromRow(row)).toList();
+      return foods.map((row) => FoodResponse.fromRow(row)).toList();
 
     } catch (e) {
       print('Error in getRecommendations: $e');

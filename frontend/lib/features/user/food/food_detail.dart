@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/core/models/food.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:frontend/features/user/providers/cart_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/features/user/order/bill_preview.dart';
@@ -10,9 +10,11 @@ import 'widgets/mobile_layout.dart';
 import '../reviews/food_comments_sheet.dart';
 import 'package:frontend/features/user/services/reviews_service.dart';
 import 'package:frontend/features/user/services/food_services.dart';
+import 'package:frontend/core/models/food_response.dart';
+import 'package:frontend/core/config/config.dart';
 
 class FoodDetailScreen extends StatefulWidget {
-  final Food food;
+  final FoodResponse food;
 
   const FoodDetailScreen({super.key, required this.food});
 
@@ -21,26 +23,86 @@ class FoodDetailScreen extends StatefulWidget {
 }
 
 class _FoodDetailScreenState extends State<FoodDetailScreen> {
-  List<Food> recommendFoods = [];
+  List<FoodResponse> recommendFoods = [];
   final FoodService foodService = FoodService();
   final ReviewsService reviewsService = ReviewsService();
 
   int quantity = 1;
   double? newRating;
-  double get rating => newRating ?? widget.food.ratingAvg ?? 0.0;
-  double get totalPrice => widget.food.price * quantity;
+  double get rating => newRating ?? widget.food.food.ratingAvg ?? 0.0;
+  double get totalPrice => widget.food.food.price * quantity;
   int totalComments = 0;
+
+  // === Khoảng cách ===
+  String distanceText = "Đang tính khoảng cách...";
+  bool isLoadingDistance = true;
 
   @override
   void initState() {
     super.initState();
     _loadTotalComments();
     _loadSuggestedFoods();
+    _calculateDistance();
+  }
+
+  // ====================== TÍNH KHOẢNG CÁCH ======================
+  Future<void> _calculateDistance() async {
+    try {
+      final double? restaurantLat = widget.food.restaurant.latitude ?? widget.food.restaurant.latitude;
+      final double? restaurantLng = widget.food.restaurant.longitude ?? widget.food.restaurant.longitude;
+
+      if (restaurantLat == null || restaurantLng == null) {
+        setState(() {
+          distanceText = "Không có vị trí nhà hàng";
+          isLoadingDistance = false;
+        });
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        setState(() {
+          distanceText = "Vui lòng bật vị trí";
+          isLoadingDistance = false;
+        });
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+      );
+
+      double distanceInMeters = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        restaurantLat,
+        restaurantLng,
+      );
+
+      double distanceInKm = distanceInMeters / 1000;
+
+      setState(() {
+        distanceText = distanceInKm < 1
+            ? "${distanceInMeters.toStringAsFixed(0)} m"
+            : "${distanceInKm.toStringAsFixed(1)} km";
+        isLoadingDistance = false;
+      });
+    } catch (e) {
+      setState(() {
+        distanceText = "Không xác định";
+        isLoadingDistance = false;
+      });
+      debugPrint("Lỗi tính khoảng cách: $e");
+    }
   }
 
   Future<void> _loadTotalComments() async {
     try {
-      final comments = await reviewsService.getReviewsByFoodId(widget.food.id!);
+      final comments = await reviewsService.getReviewsByFoodId(widget.food.food.id!);
       setState(() => totalComments = comments.length);
     } catch (e) {
       print("Lỗi khi tải số lượng bình luận: $e");
@@ -49,7 +111,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
 
   Future<void> _loadSuggestedFoods() async {
     try {
-      final suggestions = await foodService.recommendFood(widget.food.id!);
+      final suggestions = await foodService.recommendFood(widget.food.food.id!);
       setState(() => recommendFoods = suggestions);
     } catch (e) {
       print("Lỗi load món gợi ý: $e");
@@ -77,7 +139,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: FoodCommentsSheet(
-              food: widget.food,
+              food: widget.food.food,
               scrollController: scrollController,
               onRatingUpdated: (rt, totalReviews) {
                 setState(() {
@@ -109,7 +171,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
           icon: const Icon(Icons.arrow_back_ios_new, size: 18),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(food.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        title: Text(food.food.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 8),
@@ -133,7 +195,8 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                      child: Text("$totalComments", style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      child: Text("$totalComments",
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                     ),
                   ),
               ],
@@ -158,11 +221,15 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
                       child: OutlinedButton.icon(
                         onPressed: () async {
                           final cart = context.read<CartProvider>();
-                          final result = await cart.addFood(food, quantity, token);
+                          final result = await cart.addFood(food.food, quantity, token);
                           if (result) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đã thêm ${food.name} x$quantity vào giỏ hàng'), backgroundColor: Colors.green));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Đã thêm ${food.food.name} x$quantity vào giỏ hàng'), backgroundColor: Colors.green),
+                            );
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thêm vào giỏ hàng thất bại'), backgroundColor: Colors.red));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Thêm vào giỏ hàng thất bại'), backgroundColor: Colors.red),
+                            );
                           }
                         },
                         icon: const Icon(Icons.add_shopping_cart_rounded, color: Colors.red),
@@ -178,7 +245,7 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
                       child: ElevatedButton(
                         onPressed: () {
                           final userId = context.read<AuthProvider>().user!.id;
-                          final itemcart = ItemCart(food: food, quantity: quantity);
+                          final itemcart = ItemCart(food: food.food, quantity: quantity);
                           Cart cart = Cart(userId: userId!, items: [itemcart]);
                           Navigator.push(context, MaterialPageRoute(builder: (_) => BillPreviewScreen(cart: cart)));
                         },
@@ -188,7 +255,8 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
                           children: [
                             const Text('ĐẶT MÓN', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                             const SizedBox(width: 8),
-                            Text('${totalPrice.toStringAsFixed(0)} đ', style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+                            Text(formatCurrency(totalPrice),
+                                style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
                           ],
                         ),
                       ),
@@ -200,19 +268,23 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
 
       body: isDesktop
           ? FoodDetailDesktop(
-              food: food.copyWith(ratingAvg: rating),
+              food: food.copyWith(food: food.food.copyWith(ratingAvg: rating)),
               quantity: quantity,
               totalComments: totalComments,
               totalPrice: totalPrice,
+              distanceText: distanceText,
+              isLoadingDistance: isLoadingDistance,
               onIncrease: _increase,
               onDecrease: _decrease,
               recommendFoods: recommendFoods,
             )
           : FoodDetailMobile(
-              food: food.copyWith(ratingAvg: rating),
+              food: food.copyWith(food: food.food.copyWith(ratingAvg: rating)),
               quantity: quantity,
               totalComments: totalComments,
               totalPrice: totalPrice,
+              distanceText: distanceText,
+              isLoadingDistance: isLoadingDistance,
               onIncrease: _increase,
               onDecrease: _decrease,
               recommendFoods: recommendFoods,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:frontend/core/config/config.dart';
 class BillBottomBar extends StatelessWidget {
   final double total;
   final VoidCallback? onSubmit;
@@ -39,7 +39,7 @@ class BillBottomBar extends StatelessWidget {
                     style: TextStyle(color: Colors.grey),
                   ),
                   Text(
-                    '${total.toStringAsFixed(0)}đ',
+                    formatCurrency(total),
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

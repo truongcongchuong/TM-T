@@ -20,12 +20,23 @@ class _RestaurantFoodScreenState extends State<RestaurantFoodScreen> {
   final PublicServices publicServices = PublicServices();
   final ManagerFoodsServices managerFoodsServices = ManagerFoodsServices();
   late String token;
+  final TextEditingController search = TextEditingController();
+  List<Food> allFoods = []; // lưu full data
+
 
   @override
   void initState() {
     super.initState();
     token = context.read<AuthProvider>().token!;
     _loadFoods(token);
+  }
+
+  void _filterFoods(String query) async {
+    final lowerQuery = query.toLowerCase();
+    final foodSearch = await managerFoodsServices.searchFoods(token, lowerQuery);
+    setState(() {
+      foods = foodSearch;
+    });
   }
 
   Future<void> _loadFoods(String token) async {
@@ -146,6 +157,8 @@ class _RestaurantFoodScreenState extends State<RestaurantFoodScreen> {
   // ================= SEARCH =================
   Widget _buildSearchBar() {
     return TextField(
+      controller: search,
+      onChanged: _filterFoods,
       decoration: InputDecoration(
         hintText: 'Tìm món ăn...',
         prefixIcon: const Icon(Icons.search),
@@ -161,103 +174,128 @@ class _RestaurantFoodScreenState extends State<RestaurantFoodScreen> {
 
   // ================= DESKTOP TABLE =================
   Widget _buildTable() {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: DataTable(
-          headingRowHeight: 56,
-          dataRowHeight: 64,
-          columns: const [
-            DataColumn(label: Text('ID')),
-            DataColumn(label: Text('Hình ảnh')),
-            DataColumn(label: Text('Tên món')),
-            DataColumn(label: Text('Giá')),
-            DataColumn(label: Text('Trạng thái')),
-            DataColumn(label: Text('Điểm đánh giá')),
-            DataColumn(label: Text('Loại món')),
-            DataColumn(label: Text('Hành động')),
-          ],
-          rows: foods.map((food) {
-            return DataRow(cells: [
-              DataCell(Text(food.id.toString())),
-              DataCell(Image.network(
-                '$baseUrl$pathImage${food.imageUrl}',
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-              )),
-              DataCell(Text(food.name)),
-              DataCell(Text('${food.price} VNĐ')),
-              DataCell(
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: food.isAvailable!
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    food.isAvailable! ? 'Đang bán' : 'Ngừng bán',
-                    style: TextStyle(
-                      color: food.isAvailable! ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.w500,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.vertical,   // Cuộn dọc
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal, // Cuộn ngang (khi cột nhiều)
+            child: DataTable(
+              headingRowHeight: 56,
+              dataRowHeight: 68,
+              headingRowColor: WidgetStateProperty.all(Colors.grey.shade50),
+              columns: const [
+                DataColumn(label: Text('ID')),
+                DataColumn(label: Text('Hình ảnh')),
+                DataColumn(label: Text('Tên món')),
+                DataColumn(label: Text('Giá')),
+                DataColumn(label: Text('Trạng thái')),
+                DataColumn(label: Text('Điểm đánh giá')),
+                DataColumn(label: Text('Loại món')),
+                DataColumn(label: Text('Thời gian chuẩn bị')),
+                DataColumn(label: Text('Hành động')),
+              ],
+              rows: foods.map((food) {
+                return DataRow(cells: [
+                  DataCell(Text(food.id.toString())),
+                  DataCell(
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        '$baseUrl$pathImage${food.imageUrl}',
+                        width: 55,
+                        height: 55,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
-                ),
-              ),
-              DataCell(Text(food.ratingAvg != null ? food.ratingAvg!.toStringAsFixed(1) : 'Chưa có đánh giá')),
-              DataCell(
-                FutureBuilder<String?>(
-                  future: publicServices.getNameCategoryById(food.categoryId!),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Text('Loading...');
-                    }
-                    final category = snapshot.data!;
-                    return Text(category);
-                  },
-                ),
-              ),
-              DataCell(Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blue),
-                    onPressed: () async{
-                      final  result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EditFood(
-                            foodData: food,
-                          ),
+                  DataCell(
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 220),
+                      child: Text(
+                        food.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  DataCell(Text(formatCurrency(food.price))),
+                  DataCell(
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: food.isAvailable!
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        food.isAvailable! ? 'Đang bán' : 'Ngừng bán',
+                        style: TextStyle(
+                          color: food.isAvailable! ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
-                      );
-
-                      if (result != null && result is Food) {
-                        _updateFoodInList(result);
-                      }
-
-                      if (result != null && result is bool && result == true) {
-                        setState(() {
-                          foods.removeWhere((f) => f.id == food.id);
-                        });
-                      }
-                    },
+                      ),
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      _confirmDelete(food.id!);
-                    },
+                  DataCell(Text(food.ratingAvg != null 
+                      ? food.ratingAvg!.toStringAsFixed(1) 
+                      : '0.0')),
+                  DataCell(
+                    FutureBuilder<String?>(
+                      future: publicServices.getNameCategoryById(food.categoryId!),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const Text('...');
+                        return Text(snapshot.data!);
+                      },
+                    ),
                   ),
-                ],
-              )),
-            ]);
-          }).toList(),
+                  DataCell(Text('${food.preparationTime} phút')),
+                  DataCell(Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditFood(foodData: food),
+                            ),
+                          );
+                          if (result != null && result is Food) {
+                            _updateFoodInList(result);
+                          }
+                          if (result == true) {
+                            setState(() {
+                              foods.removeWhere((f) => f.id == food.id);
+                            });
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _confirmDelete(food.id!),
+                      ),
+                    ],
+                  )),
+                ]);
+              }).toList(),
+            ),
+          ),
         ),
       ),
     );

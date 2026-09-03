@@ -50,7 +50,7 @@ class User {
       'email': email,
       'phonenumber': phoneNumber,
       'default_address': defaultAddress,
-      'role': role!.value,
+      'role': role?.value,
       'password_hash': passwordHash
     };
   }

@@ -1,9 +1,12 @@
+// lib/features/order_management/pages/order_management_page.dart
 import 'package:flutter/material.dart';
 import 'package:frontend/core/enum/status.dart';
 import 'package:frontend/core/models/bill_manager_model.dart';
 import '../services/manager_bill_service.dart';
 import 'package:provider/provider.dart';
 import 'package:frontend/features/auth/providers/auth_provider.dart';
+import 'widgets/bill_detail_dialog.dart';
+import 'widgets/bill_edit_dialog.dart';
 
 class OrderManagementPage extends StatefulWidget {
   const OrderManagementPage({super.key});
@@ -16,8 +19,8 @@ class _OrderManagementPageState extends State<OrderManagementPage> {
   final ManagerBillsServices _billService = ManagerBillsServices();
 
   late Future<List<BillManagerModel>> _billsFuture;
-  List<BillManagerModel> _allBills = [];        // Lưu dữ liệu gốc
-  List<BillManagerModel> _displayBills = [];    // Dùng để filter
+  List<BillManagerModel> _allBills = [];
+  List<BillManagerModel> _displayBills = [];
 
   late String token;
   String selectedStatus = 'Tất cả';
@@ -31,32 +34,65 @@ class _OrderManagementPageState extends State<OrderManagementPage> {
     _loadBills();
   }
 
+  // ================= LOAD DATA =================
   void _loadBills() {
     setState(() {
       _billsFuture = _billService.getBills(token);
     });
   }
 
+  // ================= FILTER =================
+  void _applyFilterWithoutSetState() {
+    _displayBills = _allBills.where((bill) {
+      final matchesStatus = selectedStatus == 'Tất cả' ||
+          bill.statusBill.value == selectedStatus;
+
+      final matchesSearch = searchQuery.isEmpty ||
+          bill.id.toString().contains(searchQuery) ||
+          bill.customer.toLowerCase().contains(searchQuery.toLowerCase());
+
+      return matchesStatus && matchesSearch;
+    }).toList();
+  }
+
+  void _applyFilter() {
+    setState(() {
+      _applyFilterWithoutSetState();
+    });
+  }
+
+  // ================= FORMAT DATE =================
   String formatDate(DateTime dt) {
     return "${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} "
         "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
-  void _applyFilter() {
-    setState(() {
-      _displayBills = _allBills.where((bill) {
-        final matchesStatus = selectedStatus == 'Tất cả' ||
-            bill.statusBill.value == selectedStatus;
-
-        final matchesSearch = searchQuery.isEmpty ||
-            bill.id.toString().toLowerCase().contains(searchQuery.toLowerCase()) ||
-            bill.customer.toLowerCase().contains(searchQuery.toLowerCase());
-
-        return matchesStatus && matchesSearch;
-      }).toList();
-    });
+  // ================= DIALOG =================
+  void _showDetailDialog(BillManagerModel bill) {
+    showDialog(
+      context: context,
+      builder: (_) => BillDetailDialog(
+        bill: bill,
+        formatDate: formatDate,
+        token: token,
+      ),
+    );
   }
 
+  void _showEditDialog(BillManagerModel bill) {
+    showDialog(
+      context: context,
+      builder: (_) => BillEditDialog(
+        bill: bill,
+        token: token,
+        onRefresh: () {
+          _loadBills(); // reload API
+        },
+      ),
+    );
+  }
+
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -80,8 +116,12 @@ class _OrderManagementPageState extends State<OrderManagementPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text('Quản lý đơn hàng', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-        IconButton(onPressed: _loadBills, icon: const Icon(Icons.refresh, color: Colors.red)),
+        const Text('Quản lý đơn hàng',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+        IconButton(
+          onPressed: _loadBills,
+          icon: const Icon(Icons.refresh, color: Colors.red),
+        ),
       ],
     );
   }
@@ -97,7 +137,8 @@ class _OrderManagementPageState extends State<OrderManagementPage> {
           decoration: InputDecoration(
             hintText: 'Tìm theo mã đơn hoặc khách hàng...',
             prefixIcon: const Icon(Icons.search),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            border:
+                OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             filled: true,
             fillColor: Colors.grey.shade50,
           ),
@@ -134,11 +175,15 @@ class _OrderManagementPageState extends State<OrderManagementPage> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? Colors.red : Colors.white,
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: isSelected ? Colors.red : Colors.red.withOpacity(0.4)),
+          border: Border.all(
+              color: isSelected
+                  ? Colors.red
+                  : Colors.red.withOpacity(0.4)),
         ),
         child: Text(
           label,
@@ -151,7 +196,6 @@ class _OrderManagementPageState extends State<OrderManagementPage> {
     );
   }
 
-    // ================= TABLE SECTION  =================
   Widget _buildTableSection() {
     return FutureBuilder<List<BillManagerModel>>(
       future: _billsFuture,
@@ -164,50 +208,53 @@ class _OrderManagementPageState extends State<OrderManagementPage> {
           return Center(child: Text('Lỗi: ${snapshot.error}'));
         }
 
+        // ===== FIX QUAN TRỌNG =====
         _allBills = snapshot.data ?? [];
-        if (_displayBills.isEmpty && searchQuery.isEmpty && selectedStatus == 'Tất cả') {
-          _displayBills = List.from(_allBills);
-        }
+        _applyFilterWithoutSetState(); // luôn sync data
 
         if (_displayBills.isEmpty) {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(40),
-              child: Text('Không tìm thấy đơn hàng', style: TextStyle(fontSize: 18)),
+              child: Text('Không tìm thấy đơn hàng',
+                  style: TextStyle(fontSize: 18)),
             ),
           );
         }
 
         return Card(
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SizedBox(
-                width: MediaQuery.of(context).size.width - 280, // Trừ sidebar + padding
+                width: MediaQuery.of(context).size.width - 280,
                 child: PaginatedDataTable(
                   rowsPerPage: 10,
-                  availableRowsPerPage: const [8, 10, 15, 20],
-                  onRowsPerPageChanged: (value) {},
-                  columnSpacing: 32,           // Tăng để full width đẹp hơn
+                  columnSpacing: 32,
                   horizontalMargin: 24,
-                  headingRowHeight: 56,
-                  dataRowHeight: 60,
                   showCheckboxColumn: false,
-                  headingRowColor: WidgetStateProperty.all(Colors.grey.shade50),
+                  headingRowColor:
+                      WidgetStateProperty.all(Colors.grey.shade50),
                   columns: const [
-                    DataColumn(label: Text('Mã đơn', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Khách hàng', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Trạng thái', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Địa chỉ', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Thanh toán', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('TT thanh toán', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Ngày tạo', style: TextStyle(fontWeight: FontWeight.bold))),
-                    DataColumn(label: Text('Hành động', style: TextStyle(fontWeight: FontWeight.bold))),
+                    DataColumn(label: Text('Mã đơn')),
+                    DataColumn(label: Text('Khách hàng')),
+                    DataColumn(label: Text('Trạng thái')),
+                    DataColumn(label: Text('Địa chỉ')),
+                    DataColumn(label: Text('Thanh toán')),
+                    DataColumn(label: Text('TT thanh toán')),
+                    DataColumn(label: Text('Ngày tạo')),
+                    DataColumn(label: Text('Hành động')),
                   ],
-                  source: BillDataSource(_displayBills, formatDate),
+                  source: BillDataSource(
+                    _displayBills,
+                    formatDate,
+                    onView: _showDetailDialog,
+                    onEdit: _showEditDialog,
+                  ),
                 ),
               ),
             ),
@@ -218,12 +265,15 @@ class _OrderManagementPageState extends State<OrderManagementPage> {
   }
 }
 
-// DataSource giữ nguyên (rất tốt về hiệu năng)
+// ================= DATA SOURCE =================
 class BillDataSource extends DataTableSource {
   final List<BillManagerModel> bills;
   final String Function(DateTime) formatDate;
+  final void Function(BillManagerModel) onView;
+  final void Function(BillManagerModel) onEdit;
 
-  BillDataSource(this.bills, this.formatDate);
+  BillDataSource(this.bills, this.formatDate,
+      {required this.onView, required this.onEdit});
 
   @override
   DataRow getRow(int index) {
@@ -233,15 +283,19 @@ class BillDataSource extends DataTableSource {
       DataCell(Text('#${bill.id}')),
       DataCell(Text(bill.customer)),
       DataCell(_buildStatusBadge(bill.statusBill)),
-      DataCell(Text(bill.address, maxLines: 2, overflow: TextOverflow.ellipsis)),
+      DataCell(Text(bill.address,
+          maxLines: 2, overflow: TextOverflow.ellipsis)),
       DataCell(Text(bill.paymentMethod)),
       DataCell(_buildStatusBadge(bill.statusPayment, isPayment: true)),
       DataCell(Text(formatDate(bill.orderTime))),
       DataCell(Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(icon: const Icon(Icons.visibility, color: Colors.blue), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.edit, color: Colors.orange), onPressed: () {}),
+          IconButton(
+              icon: const Icon(Icons.visibility, color: Colors.blue),
+              onPressed: () => onView(bill)),
+          IconButton(
+              icon: const Icon(Icons.edit, color: Colors.orange),
+              onPressed: () => onEdit(bill)),
         ],
       )),
     ]);
@@ -249,7 +303,8 @@ class BillDataSource extends DataTableSource {
 
   Widget _buildStatusBadge(dynamic status, {bool isPayment = false}) {
     final (String text, Color color) = isPayment
-        ? (status.value, status == PaymentStatusEnum.paid ? Colors.green : Colors.red)
+        ? (status.value,
+            status == PaymentStatusEnum.paid ? Colors.green : Colors.red)
         : (status.value, _getStatusColor(status as OrderStatusEnum));
 
     return Container(
@@ -257,26 +312,33 @@ class BillDataSource extends DataTableSource {
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
       ),
-      child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+      child: Text(text,
+          style: TextStyle(color: color, fontWeight: FontWeight.bold)),
     );
   }
 
   Color _getStatusColor(OrderStatusEnum status) {
-    return switch (status) {
-      OrderStatusEnum.completed => Colors.green,
-      OrderStatusEnum.pending => Colors.orange,
-      OrderStatusEnum.delivering => Colors.blue,
-      OrderStatusEnum.cancelled => Colors.red,
-      OrderStatusEnum.confirmed => Colors.purple,
-    };
+    switch (status) {
+      case OrderStatusEnum.completed:
+        return Colors.green;
+      case OrderStatusEnum.pending:
+        return Colors.orange;
+      case OrderStatusEnum.delivering:
+        return Colors.blue;
+      case OrderStatusEnum.cancelled:
+        return Colors.red;
+      case OrderStatusEnum.confirmed:
+        return Colors.purple;
+    }
   }
 
   @override
   bool get isRowCountApproximate => false;
+
   @override
   int get rowCount => bills.length;
+
   @override
   int get selectedRowCount => 0;
 }

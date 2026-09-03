@@ -3,7 +3,7 @@ import 'widgets/restaurant_sidebar.dart';
 import 'package:frontend/features/restaurant/food_management/food_management.dart';
 import 'widgets/dashboard.dart';
 import 'package:frontend/features/restaurant/order_management/order_management.dart';
-import 'package:frontend/features/restaurant/user_management/user_management.dart';
+import 'package:frontend/features/restaurant/info_restaurant_management/info_restaurant_management.dart';
 import 'package:frontend/features/restaurant/setting/setting.dart';
 
 class RestaurantDashboardScreen extends StatefulWidget {
@@ -20,7 +20,7 @@ class _RestaurantDashboardScreenState extends State<RestaurantDashboardScreen> {
     DashboardPage(),
     RestaurantFoodScreen(),
     OrderManagementPage(),
-    UserManagementPage(),
+    RestaurantInfoPage(),
     RestaurantSettingsScreen(),
   ];
 

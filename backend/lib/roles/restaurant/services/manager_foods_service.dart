@@ -8,19 +8,31 @@ class ManagerFoodsService {
 
   final UploadFileService uploadFileService = UploadFileService();
 
-  Future<List<FoodModel>> getFoodsForManager(String restaurantId) async {
+  Future<List<FoodModel>> getFoodsForManager(int ownerId) async {
     final Connection conn = await DatabaseConfig.connection();
 
     final result = await conn.execute(
       Sql.named(
         '''
-        SELECT *
-        FROM foods 
-        WHERE restaurant_id = @restaurantId;
+        SELECT 
+          f.id,
+          f.restaurant_id,
+          f.category_id,
+          f.name,
+          f.description,
+          f.price,
+          f.image_url,
+          f.rating_avg,
+          f.is_available,
+          f.preparation_time
+
+        FROM foods f
+        JOIN restaurants r ON r.id = f.restaurant_id
+        WHERE r.owner = @ownertId;
         '''
       ),
       parameters: {
-        'restaurantId': restaurantId,
+        'ownertId': ownerId,
       },
     );
 
@@ -40,7 +52,8 @@ class ManagerFoodsService {
             price = @price,
             image_url = COALESCE(@newImageUrl, @imageUrl),
             is_available = @isAvailable,
-            category_id = @categoryId
+            category_id = @categoryId,
+            preparation_time = @preparationTime
         WHERE id = @id AND restaurant_id = @restaurantId
         RETURNING *;
         '''
@@ -55,6 +68,7 @@ class ManagerFoodsService {
         'isAvailable': food.isAvailable,
         'categoryId': food.categoryId,
         'newImageUrl': newImageUrl,
+        'preparationTime': food.preparationTime
       },
     );
 
@@ -103,8 +117,8 @@ class ManagerFoodsService {
     final result = await conn.execute(
       Sql.named(
         '''
-        INSERT INTO foods (name, description, price, image_url, is_available, category_id, restaurant_id)
-        VALUES (@name, @description, @price, @imageUrl, @isAvailable, @categoryId, @restaurantId)
+        INSERT INTO foods (name, description, price, image_url, is_available, category_id, restaurant_id, preparation_time)
+        VALUES (@name, @description, @price, @imageUrl, @isAvailable, @categoryId, @restaurantId, @preparationTime)
         RETURNING *;
         '''
       ),
@@ -116,9 +130,55 @@ class ManagerFoodsService {
         'isAvailable': food.isAvailable ?? true,
         'categoryId': food.categoryId,
         'restaurantId': food.restaurantId,
+        'preparationTime': food.preparationTime
       },
     );
 
     return FoodModel.fromRow(result.first);
+  }
+
+  Future<List<FoodModel>> searchFoods(int ownerId, String query) async {
+    final Connection conn = await DatabaseConfig.connection();
+
+    final cleanQuery = query.trim();
+
+    if (cleanQuery.isEmpty) {
+      // 👉 gọi lại hàm get all
+      return getFoodsForManager(ownerId);
+    }
+
+    final result = await conn.execute(
+      Sql.named(
+        '''
+        SELECT 
+          f.id,
+          f.restaurant_id,
+          f.category_id,
+          f.name,
+          f.description,
+          f.price,
+          f.image_url,
+          f.rating_avg,
+          f.is_available,
+          f.preparation_time
+
+        FROM foods f
+        JOIN restaurants r ON r.id = f.restaurant_id
+        WHERE r.owner = @ownerId
+          AND (
+            LOWER(f.name) LIKE LOWER(@query)
+            OR CAST(f.price AS TEXT) LIKE @query
+            OR CAST(f.id AS TEXT) LIKE @query
+          )
+        ORDER BY f.name;
+        '''
+      ),
+      parameters: {
+        'ownerId': ownerId,
+        'query': '%$cleanQuery%',
+      },
+    );
+
+    return result.map((row) => FoodModel.fromRow(row)).toList();
   }
 }

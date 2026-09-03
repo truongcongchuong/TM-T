@@ -8,6 +8,7 @@ class Food {
   final bool? isAvailable;
   final int? categoryId;
   final int restaurantId;
+  final int preparationTime;
 
   Food({
     this.id,
@@ -19,6 +20,7 @@ class Food {
     this.isAvailable,
     this.categoryId,
     required this.restaurantId,
+    required this.preparationTime,
   });
 
   factory Food.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class Food {
       isAvailable: json['is_available'],
       categoryId: json['category_id'],
       restaurantId: json['restaurant_id'],
+      preparationTime: json['preparation_time'] ?? 15,
     );
   }
 
@@ -45,6 +48,7 @@ class Food {
     'is_available': isAvailable,
     'category_id': categoryId,
     'restaurant_id': restaurantId,
+    'preparation_time': preparationTime
   };
 
   Food copyWith({
@@ -57,6 +61,7 @@ class Food {
     bool? isAvailable,
     int? categoryId,
     int? restaurantId,
+    int? preparationTime
   }) {
     return Food(
       id: id ?? this.id,
@@ -68,6 +73,7 @@ class Food {
       isAvailable: isAvailable ?? this.isAvailable,
       categoryId: categoryId ?? this.categoryId,
       restaurantId: restaurantId ?? this.restaurantId, // restaurantId không đổi khi cập nhật thông tin món ăn
+      preparationTime: preparationTime ?? this.preparationTime
     );
   }
 }

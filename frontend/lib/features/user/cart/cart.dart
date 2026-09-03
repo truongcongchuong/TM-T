@@ -8,6 +8,7 @@ import 'package:frontend/features/user/order/bill_preview.dart';
 import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/auth/screens/login.dart';
 import 'package:frontend/features/user/services/cart_service.dart';
+import 'package:frontend/features/user/services/food_services.dart';
 
 class CartContent extends StatefulWidget {
   const CartContent({super.key});
@@ -20,6 +21,7 @@ class _CartContentState extends State<CartContent> {
   Set<int> selectedItems = {}; // lưu id các món được chọn
 
   CartService cartService = CartService();
+  FoodService foodService = FoodService();
 
   @override
   Widget build(BuildContext context) {
@@ -66,11 +68,13 @@ class _CartContentState extends State<CartContent> {
                     final isSelected = selectedItems.contains(food.id);
 
                     return InkWell(
-                      onTap: () {
+                      onTap: () async {
+                        final loadFood =  await foodService.getFoodById(food.id!);
+                        
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => FoodDetailScreen(food: food),
+                            builder: (_) => FoodDetailScreen(food: loadFood),
                           ),
                         );
                       },

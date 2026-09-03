@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/config/config.dart';
 
 class OrderSummaryCard extends StatelessWidget {
   final double total;
@@ -64,7 +65,7 @@ class OrderSummaryCard extends StatelessWidget {
         children: [
           Text(label),
           Text(
-            '${value.toStringAsFixed(0)} đ',
+            formatCurrency(value),
             style: TextStyle(
               fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             ),

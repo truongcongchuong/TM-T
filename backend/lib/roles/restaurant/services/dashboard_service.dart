@@ -4,12 +4,15 @@ import '../models/dashboard_overview_model.dart';
 import 'package:backend/shared/enum/status_enum.dart';
 
 class DashboardService {
-  Future<DashboardOverviewModel> getOverview(int restaurantId) async {
-    final Connection conn = await DatabaseConfig.connection();
+  Future<DashboardOverviewModel> getOverview(
+    int ownerId, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final conn = await DatabaseConfig.connection();
 
     final result = await conn.execute(
-      Sql.named(
-        '''
+      Sql.named('''
         SELECT
             stats.total_sold,
             stats.total_revenue,
@@ -37,24 +40,34 @@ class DashboardService {
             JOIN foods f ON db.food_id = f.id
             JOIN bills b ON db.bill_id = b.id
             JOIN status st ON b.status_id = st.id
-            WHERE f.restaurant_id = @restaurantId
+            JOIN restaurants r ON f.restaurant_id = r.id
+            WHERE r.owner = @ownerId
+              AND (
+                @startDate::timestamp IS NULL
+                OR b.order_time >= @startDate::timestamp
+              )
+              AND (
+                @endDate::timestamp IS NULL
+                OR b.order_time <= @endDate::timestamp
+              )
         ) stats,
         (
             SELECT COUNT(*) AS total_products
-            FROM foods
-            WHERE restaurant_id = @restaurantId
+            FROM foods f
+            JOIN restaurants r ON f.restaurant_id = r.id
+            WHERE r.owner = @ownerId
         ) products;
-        '''
-      ),
+      '''),
       parameters: {
-        'restaurantId': restaurantId,
+        'ownerId': ownerId,
         'completedStatus': OrderStatusEnum.completed.value,
         'pendingStatus': OrderStatusEnum.pending.value,
-        'cancelledStatus': OrderStatusEnum.cancelled.value
+        'cancelledStatus': OrderStatusEnum.cancelled.value,
+        'startDate': startDate,
+        'endDate': endDate,
       },
     );
 
-    print(result.first.toColumnMap());
     return DashboardOverviewModel.fromRow(result.first);
   }
 }

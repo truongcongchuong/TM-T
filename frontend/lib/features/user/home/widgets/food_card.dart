@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/core/models/food.dart';
 import 'package:frontend/features/user/food/food_detail.dart';
 import 'package:frontend/core/config/config.dart';
+import 'package:frontend/core/models/food_response.dart';
 
 class FoodCard extends StatelessWidget {
-  final Food food;
+  final FoodResponse food;
 
   const FoodCard({
     super.key,
@@ -35,7 +35,7 @@ class FoodCard extends StatelessWidget {
             AspectRatio(
               aspectRatio: 5 / 4.8,
               child: Image.network(
-                '$baseUrl$pathImage${food.imageUrl}',
+                '$baseUrl$pathImage${food.food.imageUrl}',
                 fit: BoxFit.cover,
               ),
             ),
@@ -45,7 +45,7 @@ class FoodCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    food.name,
+                    food.food.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -58,7 +58,7 @@ class FoodCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${food.price} VNĐ',
+                        formatCurrency(food.food.price),
                         style: const TextStyle(
                           color: Colors.red,
                           fontSize: 14,
@@ -74,7 +74,7 @@ class FoodCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            (food.ratingAvg ?? 0).toStringAsFixed(1),
+                            (food.food.ratingAvg ?? 0).toStringAsFixed(1),
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,

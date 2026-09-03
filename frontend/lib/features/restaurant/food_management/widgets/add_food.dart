@@ -23,6 +23,7 @@ class _AddFoodScreenState extends State<AddFood> {
   final _nameController = TextEditingController();
   final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _prepTimeController = TextEditingController();
 
   final PublicServices _publicServices = PublicServices();
 
@@ -208,6 +209,14 @@ class _AddFoodScreenState extends State<AddFood> {
                                         required: true,
                                       ),
                                       const SizedBox(height: 20),
+                                      _buildTextField(
+                                        controller: _prepTimeController,
+                                        label: 'Thời gian chuẩn bị (phút)',
+                                        hint: 'Ví dụ: 15',
+                                        keyboardType: TextInputType.number,
+                                        required: true,
+                                      ),
+                                      const SizedBox(height: 20),
                                       DropdownButtonFormField<int>(
                                         value: _selectedCategory,
                                         decoration: _inputDecoration('Danh mục'),
@@ -352,9 +361,20 @@ class _AddFoodScreenState extends State<AddFood> {
       controller: controller,
       keyboardType: keyboardType,
       decoration: _inputDecoration(label).copyWith(hintText: hint),
-      validator: required
-          ? (v) => v?.trim().isEmpty ?? true ? 'Trường này là bắt buộc' : null
-          : null,
+      validator: (v) {
+        if (required && (v == null || v.trim().isEmpty)) {
+          return 'Trường này là bắt buộc';
+        }
+
+        if (keyboardType == TextInputType.number) {
+          final value = int.tryParse(v!);
+          if (value == null || value <= 0) {
+            return 'Phải là số > 0';
+          }
+        }
+
+        return null;
+      },
     );
   }
 
@@ -410,6 +430,12 @@ class _AddFoodScreenState extends State<AddFood> {
       isLoading = true;
 
      });
+    if (_imageBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn ảnh')),
+      );
+      return;
+    }
     final nameImageUrl = await managerFoodsServices.uploadImageFood(token,_imageBytes!);
 
     final newFood = Food(
@@ -420,6 +446,7 @@ class _AddFoodScreenState extends State<AddFood> {
       isAvailable: _isAvailable,
       categoryId: _selectedCategory!,
       restaurantId: restaurantId, 
+      preparationTime: int.parse(_prepTimeController.text.trim()),
     );
 
     final addedFood = await managerFoodsServices.addFood(token, newFood);
@@ -444,6 +471,7 @@ class _AddFoodScreenState extends State<AddFood> {
     _nameController.dispose();
     _priceController.dispose();
     _descriptionController.dispose();
+    _prepTimeController.dispose();
     super.dispose();
   }
 }

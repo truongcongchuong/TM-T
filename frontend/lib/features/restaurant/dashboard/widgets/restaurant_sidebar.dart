@@ -30,7 +30,7 @@ class RestaurantSidebar extends StatelessWidget {
           _menuItem(0, Icons.dashboard, 'Dashboard'),
           _menuItem(1, Icons.fastfood, 'Quản lý món ăn'),
           _menuItem(2, Icons.receipt_long, 'Đơn hàng'),
-          _menuItem(3, Icons.people, 'Người dùng'),
+          _menuItem(3, Icons.storefront, 'Nhà hàng'),
           _menuItem(4, Icons.settings, 'Cài đặt'),
         ],
       ),

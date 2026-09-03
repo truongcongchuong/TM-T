@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/core/models/food.dart';
 import 'package:frontend/core/models/category_food.dart';
 import 'package:frontend/features/user/services/food_services.dart';
+import 'package:frontend/core/models/food_response.dart';
 import 'food_card.dart';
+import 'home_banner.dart';
 
 class HomeBody extends StatefulWidget {
   final bool isDesktop;
   final List<CategoryFood> categories;
-  final List<Food> foods;           // Danh sách từ parent (search/filter)
+  final List<FoodResponse> foods;           // Danh sách từ parent (search/filter)
   final String? searchQuery;        // Thêm để hiển thị tiêu đề
 
   const HomeBody({
@@ -24,7 +25,7 @@ class HomeBody extends StatefulWidget {
 
 class _HomeBodyState extends State<HomeBody> {
   int selectedCategoryIndex = 0;
-  List<Food> currentFoods = [];
+  List<FoodResponse> currentFoods = [];
   final FoodService foodService = FoodService();
 
   @override
@@ -88,8 +89,10 @@ class _HomeBodyState extends State<HomeBody> {
           vertical: 16,
         ),
         child: Column(
+          
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const HomeBanner(),
             Text(
               isSearching 
                   ? 'Kết quả tìm kiếm cho "${widget.searchQuery}"'

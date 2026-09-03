@@ -28,6 +28,7 @@ class _EditFoodScreenState extends State<EditFood> {
   late TextEditingController _nameController;
   late TextEditingController _priceController;
   late TextEditingController _descriptionController;
+  late TextEditingController _prepTimeController;
 
   late String _token; 
 
@@ -65,7 +66,7 @@ class _EditFoodScreenState extends State<EditFood> {
     _nameController = TextEditingController(text: widget.foodData.name);
     _priceController = TextEditingController(text: widget.foodData.price.toString());
     _descriptionController = TextEditingController(text: widget.foodData.description);
-
+    _prepTimeController = TextEditingController(text: widget.foodData.preparationTime.toString());
     _selectedCategory = widget.foodData.categoryId;
     _isAvailable = widget.foodData.isAvailable ?? true;
     _currentImageUrl = widget.foodData.imageUrl; // giả sử backend trả về url
@@ -198,6 +199,13 @@ class _EditFoodScreenState extends State<EditFood> {
                                       _buildTextField(
                                         controller: _priceController,
                                         label: 'Giá bán (VNĐ)',
+                                        keyboardType: TextInputType.number,
+                                        required: true,
+                                      ),
+                                      const SizedBox(height: 20),
+                                      _buildTextField(
+                                        controller: _prepTimeController,
+                                        label: 'Thời gian chuẩn bị (phút)',
                                         keyboardType: TextInputType.number,
                                         required: true,
                                       ),
@@ -376,12 +384,22 @@ class _EditFoodScreenState extends State<EditFood> {
       controller: controller,
       keyboardType: keyboardType,
       decoration: _inputDecoration(label),
-      validator: required
-          ? (v) => v?.trim().isEmpty ?? true ? 'Trường này là bắt buộc' : null
-          : null,
+      validator: (v) {
+        if (required && (v == null || v.trim().isEmpty)) {
+          return 'Trường này là bắt buộc';
+        }
+
+        if (keyboardType == TextInputType.number) {
+          final value = int.tryParse(v!);
+          if (value == null || value <= 0) {
+            return 'Phải là số > 0';
+          }
+        }
+
+        return null;
+      },
     );
   }
-
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
       labelText: label,

@@ -11,23 +11,23 @@ class ManagerFoodController {
   final UploadFileService uploadFileService = UploadFileService();
 
   Future<Response> getFoodsForManager(Request req) async {
-    final restaurantId = req.context['userId'] as int?;
+    final ownerId = req.context['userId'] as int?;
     final role = req.context['role'] as String?;
 
-    if (restaurantId == null || role != UserRoleEnum.restaurantOwner.value) {
+    if (ownerId == null || role != UserRoleEnum.restaurantOwner.value) {
       return ResponseUtil.unauthorized();
     }
 
-    final foods = await managerFoodsService.getFoodsForManager(restaurantId.toString());
+    final foods = await managerFoodsService.getFoodsForManager(ownerId);
     
     return ResponseUtil.success(foods.map((food) => food.toMap()).toList());
   }
 
   Future<Response> editFood(Request req) async {
-    final restaurantId = req.context['userId'] as int?;
+    final ownerId = req.context['userId'] as int?;
     final role = req.context['role'] as String?;
 
-    if (restaurantId == null || role != UserRoleEnum.restaurantOwner.value) {
+    if (ownerId == null || role != UserRoleEnum.restaurantOwner.value) {
       return ResponseUtil.unauthorized();
     }
 
@@ -41,7 +41,7 @@ class ManagerFoodController {
     final newInfFood = FoodModel.fromMap(json['food'] as Map<String, dynamic>);
 
 
-    if (newInfFood.restaurantId != restaurantId) {
+    if (newInfFood.restaurantId != ownerId) {
       return ResponseUtil.unauthorized();
     }
 
@@ -60,10 +60,10 @@ class ManagerFoodController {
   }
 
   Future<Response> deleteFood(Request req, String foodId) async {
-    final restaurantId = req.context['userId'] as int?;
+    final ownerId = req.context['userId'] as int?;
     final role = req.context['role'] as String?;
 
-    if (restaurantId == null || role != UserRoleEnum.restaurantOwner.value) {
+    if (ownerId == null || role != UserRoleEnum.restaurantOwner.value) {
       return ResponseUtil.unauthorized();
     }
 
@@ -72,7 +72,7 @@ class ManagerFoodController {
       if (!isNumeric) {
         return ResponseUtil.badRequest('Invalid food ID');
       }
-      final isDeleted = await managerFoodsService.deleteFood(restaurantId, int.parse(foodId));
+      final isDeleted = await managerFoodsService.deleteFood(ownerId, int.parse(foodId));
 
       if (!isDeleted) {
         return ResponseUtil.badRequest('Failed to delete food');
@@ -85,10 +85,10 @@ class ManagerFoodController {
   }
 
   Future<Response> addFood(Request req) async {
-    final restaurantId = req.context['userId'] as int?;
+    final ownerId = req.context['userId'] as int?;
     final role = req.context['role'] as String?;
 
-    if (restaurantId == null || role != UserRoleEnum.restaurantOwner.value) {
+    if (ownerId == null || role != UserRoleEnum.restaurantOwner.value) {
       return ResponseUtil.unauthorized();
     }
 
@@ -100,9 +100,9 @@ class ManagerFoodController {
 
     final newFood = FoodModel.fromMap(json);
 
-    if (newFood.restaurantId != restaurantId) {
-      return ResponseUtil.unauthorized();
-    }
+    // if (newFood.restaurantId != ownerId) {
+    //   return ResponseUtil.unauthorized();
+    // }
 
     try {
       final addedFood = await managerFoodsService.addFood(newFood);
@@ -114,6 +114,29 @@ class ManagerFoodController {
       return ResponseUtil.success(addedFood.toMap(), message: 'Food added successfully');
     } catch (e) {
       return ResponseUtil.badRequest('Invalid request body: $e');
+    }
+  }
+
+  Future<Response> searchFood(Request req) async {
+    final ownerId = req.context['userId'] as int?;
+    final role = req.context['role'] as String?;
+
+    if (ownerId == null || role != UserRoleEnum.restaurantOwner.value) {
+      return ResponseUtil.unauthorized();
+    }
+
+    try {
+      // Lấy query từ URL: /foods/search?q=pizza
+      final query = req.url.queryParameters['q'];
+
+      final foods = await managerFoodsService.searchFoods(ownerId, query as String);
+
+      return ResponseUtil.success(
+        foods.map((food) => food.toMap()).toList(),
+        message: 'Search success',
+      );
+    } catch (e) {
+      return ResponseUtil.badRequest('Error searching food: $e');
     }
   }
 }

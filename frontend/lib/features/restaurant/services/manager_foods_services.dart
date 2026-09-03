@@ -14,7 +14,6 @@ class ManagerFoodsServices {
         'Authorization': 'Bearer $token'
       },
     );
-
     if (response.statusCode == 200) {
       return (jsonDecode(response.body)['data'] as List)
           .map((e) => Food.fromJson(e))
@@ -61,10 +60,6 @@ class ManagerFoodsServices {
         'newImageUrl': newImageUrl,
       }),
     );
-    print(food.toJson());
-    print(newImageUrl);
-
-    print("data json: ${jsonDecode(response.body)}");
 
     if (response.statusCode == 200) {
       return Food.fromJson(jsonDecode(response.body)['data']);
@@ -103,5 +98,24 @@ class ManagerFoodsServices {
       return null;
     }
     return Food.fromJson(jsonDecode(response.body)['data']);
+  }
+
+  Future<List<Food>> searchFoods(String token, String query) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/restaurant/manager/foods/search?q=$query'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        ...headers,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return (data['data'] as List)
+          .map((e) => Food.fromJson(e))
+          .toList();
+    } else {
+      throw Exception('Failed to search foods');
+    }
   }
 }

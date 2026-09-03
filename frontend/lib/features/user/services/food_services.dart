@@ -3,12 +3,15 @@ import 'package:http/http.dart' as http;
 import 'package:frontend/core/config/config.dart';
 import 'package:frontend/core/models/food.dart';
 import 'package:frontend/core/models/category_food.dart';
+import 'package:frontend/core/models/food_response.dart';
+import 'geolocator.dart';
 
 class FoodService {
 
-  Future<List<Food>> getAllFoods() async {
-    final response = await http.get(Uri.parse('$baseUrl/user/foods'));
-
+  Future<List<FoodResponse>> getAllFoods() async {
+    final url = Uri.parse('$baseUrl/user/foods');
+    final response = await http.get(url);
+    
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(response.body);
 
@@ -16,7 +19,7 @@ class FoodService {
         return [];
       }
       return data['data']
-          .map<Food>((foodData) => Food.fromJson(foodData))
+          .map<FoodResponse>((foodData) => FoodResponse.fromMap(foodData))
           .toList();  
     } else {
       throw Exception('Failed to load foods');
@@ -24,12 +27,12 @@ class FoodService {
   }
 
   // filder food by id
-  Future<Food> getFoodById(int id) async {
+  Future<FoodResponse> getFoodById(int id) async {
     final response = await http.get(Uri.parse('$baseUrl/user/foods/$id'));
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(response.body);
-      return Food.fromJson(data['data']);
+      return FoodResponse.fromMap(data['data']);
     } else if (response.statusCode == 404) {
       throw Exception('Food not found');
     }
@@ -55,24 +58,25 @@ class FoodService {
     }
   }
 
-  Future<List<Food>> getFoodsByCategory(int categoryId) async {
+  Future<List<FoodResponse>> getFoodsByCategory(int categoryId) async {
     final response = await http.get(Uri.parse('$baseUrl/user/foods/category/$categoryId'));
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = jsonDecode(response.body);
 
+      print(data);
       if (data['success'] != true) {
         return [];
       }
       return data['data']
-          .map<Food>((foodData) => Food.fromJson(foodData))
+          .map<FoodResponse>((foodData) => FoodResponse.fromMap(foodData))
           .toList();  
     } else {
       throw Exception('Failed to load foods by category');
     }
   }
 
-  Future<List<Food>> recommendFood(int foodId, {int limit = 6}) async {
+  Future<List<FoodResponse>> recommendFood(int foodId, {int limit = 6}) async {
     final response = await http.get(Uri.parse('$baseUrl/public/recommendations/$foodId'));
 
     if (response.statusCode == 200) {
@@ -82,14 +86,14 @@ class FoodService {
         return [];
       }
       return data['data']
-          .map<Food>((foodData) => Food.fromJson(foodData))
+          .map<FoodResponse>((foodData) => FoodResponse.fromMap(foodData))
           .toList();  
     } else {
       throw Exception('Failed to load recommended foods');
     }
   }
 
-  Future<List<Food>> searchFood(String query) async {
+  Future<List<FoodResponse>> searchFood(String query) async {
     final response = await http.get(
       Uri.parse('$baseUrl/public/foods/search?query=$query'),
     );
@@ -104,7 +108,7 @@ class FoodService {
       final List list = data['data'];
 
       return list
-          .map<Food>((foodData) => Food.fromJson(foodData))
+          .map<FoodResponse>((foodData) => FoodResponse.fromMap(foodData))
           .toList();
     } else {
       throw Exception('Failed to search foods');

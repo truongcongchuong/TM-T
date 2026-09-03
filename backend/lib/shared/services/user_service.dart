@@ -1,6 +1,7 @@
 import 'package:postgres/postgres.dart';
 import 'package:backend/core/config/database.dart';
 import '../models/user_model.dart';
+import 'package:backend/shared/enum/status_enum.dart';
 
 class UserService {
 
@@ -66,8 +67,8 @@ class UserService {
 
     final result = await conn.execute(
       Sql.named('''
-      INSERT INTO users (username, email, phoneNumber, password_hash, role, default_address)
-      VALUES (@u, @e, @pn, @ph, @r, @da)
+      INSERT INTO users (username, email, phoneNumber, password_hash, role, default_address, status_id)
+      VALUES (@u, @e, @pn, @ph, (SELECT id FROM role WHERE name = @r), @da, (SELECT id FROM status WHERE name = @stname))
       RETURNING id;
       '''),
       parameters: {
@@ -77,6 +78,7 @@ class UserService {
         "ph": user.passwordHash,
         "r": user.role,
         "da": user.defaultAddress,
+        "stname": UserStatusEnum.active.value
       },
     );
 

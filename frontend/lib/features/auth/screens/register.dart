@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/features/auth/services/login_services.dart';
 import 'package:frontend/core/models/user.dart';
-
+import 'package:frontend/features/auth/widgets/complete_restaurant_screen.dart'; // Thêm import màn hình mới
+import 'package:frontend/core/enum/user_role.dart';
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -19,6 +20,10 @@ class RegisterPage extends State<RegisterScreen> {
   final loginService = LoginServices();
   bool showPassword = false;
   bool showConfirmPassword = false;
+  UserRole role = UserRole.user;
+  
+  // Thêm biến cho checkbox nhà hàng
+  bool _isRestaurantOwner = false;
 
   @override
   void dispose() {
@@ -30,7 +35,8 @@ class RegisterPage extends State<RegisterScreen> {
     _confirmPasswordController.dispose();
     super.dispose();
   }
-  void _register() async{
+
+  void _register() async {
     final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
@@ -44,31 +50,49 @@ class RegisterPage extends State<RegisterScreen> {
       );
       return;
     }
+
+    if (_isRestaurantOwner) {
+      role = UserRole.restaurantOwner;
+    }
+
     final newUser = User(
       username: username,
       email: email,
       phoneNumber: phone,
-      passwordHash: password,
+      passwordHash: password, // Lưu ý: backend nên nhận plain password
       defaultAddress: address,
+      role: role,
+      
     );
-    // Thực hiện đăng ký với các thông tin đã thu thập
-    final (success, response) = await loginService.register(newUser);
+
+    final userId = await loginService.register(newUser);
 
     if (!mounted) return;
-    if (success && response != null) {
-      final id = response["userId"];
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đăng ký thành công với id là $id')),
-      );
-      Navigator.pop(context);
+    if (userId != -1) {
+      // Nếu người dùng chọn "Tôi là chủ nhà hàng" -> chuyển sang màn hình nhập thông tin nhà hàng
+      if (_isRestaurantOwner) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CompleteRestaurantScreen(userId: userId),
+          ),
+        );
+      } else {
+        // Đăng ký thường -> thông báo và quay lại màn hình đăng nhập
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đăng ký thành công với id là $userId')),
+        );
+        Navigator.pop(context);
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đăng ký thất bại')),
-      );  
+      );
     }
   }
+
   @override
-  Widget build(BuildContext context) {  
+  Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final bool isDesktop = screenWidth >= 900;
 
@@ -159,6 +183,13 @@ class RegisterPage extends State<RegisterScreen> {
                               },
                               onRegister: _register,
                               onGoToLogin: () => Navigator.pop(context),
+                              // Truyền biến và callback cho checkbox
+                              isRestaurantOwner: _isRestaurantOwner,
+                              onRestaurantOwnerChanged: (value) {
+                                setState(() {
+                                  _isRestaurantOwner = value;
+                                });
+                              },
                             ),
                           ),
                         ],
@@ -184,6 +215,12 @@ class RegisterPage extends State<RegisterScreen> {
                         },
                         onRegister: _register,
                         onGoToLogin: () => Navigator.pop(context),
+                        isRestaurantOwner: _isRestaurantOwner,
+                        onRestaurantOwnerChanged: (value) {
+                          setState(() {
+                            _isRestaurantOwner = value;
+                          });
+                        },
                       ),
               ),
             ),
@@ -207,6 +244,8 @@ class _RegisterForm extends StatelessWidget {
   final VoidCallback onToggleConfirmPassword;
   final VoidCallback onRegister;
   final VoidCallback onGoToLogin;
+  final bool isRestaurantOwner;
+  final ValueChanged<bool> onRestaurantOwnerChanged;
 
   const _RegisterForm({
     required this.usernameController,
@@ -221,6 +260,8 @@ class _RegisterForm extends StatelessWidget {
     required this.onToggleConfirmPassword,
     required this.onRegister,
     required this.onGoToLogin,
+    required this.isRestaurantOwner,
+    required this.onRestaurantOwnerChanged,
   });
 
   @override
@@ -316,6 +357,25 @@ class _RegisterForm extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          
+          // ===== THÊM CHECKBOX NHÀ HÀNG =====
+          CheckboxListTile(
+            title: const Text(
+              'Tôi là chủ nhà hàng',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            subtitle: const Text(
+              'Bạn sẽ cần cung cấp thêm thông tin nhà hàng ở bước tiếp theo',
+              style: TextStyle(fontSize: 12),
+            ),
+            value: isRestaurantOwner,
+            onChanged: (value) => onRestaurantOwnerChanged(value ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+          ),
+          // ===================================
+
           const SizedBox(height: 18),
           SizedBox(
             height: 48,

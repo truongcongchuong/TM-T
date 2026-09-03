@@ -65,7 +65,7 @@ class ProductSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${totalPrice.toStringAsFixed(0)}đ',
+                      formatCurrency(totalPrice),
                       style: const TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.bold,

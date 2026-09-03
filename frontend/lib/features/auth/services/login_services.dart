@@ -36,23 +36,27 @@ class LoginServices {
   }
 
 
-  Future<(bool success, dynamic response)> register(User user) async {
-    final url = Uri.parse('$baseUrl/Register');
+  Future<int> register(User user) async {
+    print(user.toJson());
     try {
+      final url = Uri.parse('$baseUrl/auth/register');
+      print("$baseUrl/auth/register");
       final response = await http.post(
         url,
         headers: headers,
         body: jsonEncode(user.toJson()),
       );
-
+      print("dữ liệu trả về $jsonDecode(response.body)");
       if (response.statusCode == 200) {
+        print("vào 200");
         final Map<String, dynamic> jsonData = jsonDecode(response.body);
-        return (true, jsonData);
+        return jsonData["data"]["id"] as int;
       } else {
-        return (false, null);
+        return -1;
       }
     } catch (e) {
-      return (false, null);
+      print(e);
+      return -1;
     }
   }
 }

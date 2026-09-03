@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/models/bill.dart';
-import 'package:frontend/core/models/food.dart';
+import 'package:frontend/core/models/food_response.dart';
 import 'package:frontend/features/user/services/food_services.dart';
 import 'package:frontend/core/config/config.dart';
 
@@ -17,7 +17,7 @@ class HistoryOrderCard extends StatefulWidget {
 }
 
 class _HistoryOrderCardState extends State<HistoryOrderCard> {
-  List<Food> foods = [];
+  List<FoodResponse> foods = [];
   bool isLoading = true;
 
   @override
@@ -58,7 +58,7 @@ class _HistoryOrderCardState extends State<HistoryOrderCard> {
 
     double sum = 0;
     for (int i = 0; i < widget.bill.items.length; i++) {
-      sum += foods[i].price * widget.bill.items[i].quantity;
+      sum += foods[i].food.price * widget.bill.items[i].quantity;
     }
     return sum;
   }
@@ -104,7 +104,7 @@ class _HistoryOrderCardState extends State<HistoryOrderCard> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                '${total.toStringAsFixed(0)} VNĐ',
+                formatCurrency(total),
                 style: const TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
@@ -133,7 +133,7 @@ class _HistoryOrderCardState extends State<HistoryOrderCard> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: Image.network(
-                      "$baseUrl$pathImage${food.imageUrl}",
+                      "$baseUrl$pathImage${food.food.imageUrl}",
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
@@ -148,7 +148,7 @@ class _HistoryOrderCardState extends State<HistoryOrderCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          food.name,
+                          food.food.name,
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -156,7 +156,7 @@ class _HistoryOrderCardState extends State<HistoryOrderCard> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          food.description,
+                          food.food.description,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 12),
@@ -173,7 +173,7 @@ class _HistoryOrderCardState extends State<HistoryOrderCard> {
                               ),
                             ),
                             Text(
-                              '${(food.price * item.quantity).toStringAsFixed(0)} VNĐ',
+                              formatCurrency(food.food.price * item.quantity),
                               style: const TextStyle(
                                 color: Colors.red,
                                 fontWeight: FontWeight.bold,

@@ -44,7 +44,7 @@ Future<String> setupDatabase() async {
     await conn.execute('''
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
+        username VARCHAR(50) NOT NULL,
         email VARCHAR(100) UNIQUE NOT NULL,
         phonenumber VARCHAR(15) UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
@@ -58,19 +58,19 @@ Future<String> setupDatabase() async {
     /* =========================
        RESTAURANTS
     ========================== */
-    // await conn.execute('''
-    //   CREATE TABLE IF NOT EXISTS restaurants (
-    //     id SERIAL PRIMARY KEY,
-    //     owner INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    //     name VARCHAR(100) UNIQUE NOT NULL,
-    //     address TEXT,
-    //     latitude DECIMAL,
-    //     longitude DECIMAL,
-    //     is_open BOOLEAN DEFAULT TRUE,
-    //     rating_avg FLOAT DEFAULT 0,
-    //     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    //   );
-    // ''');
+    await conn.execute('''
+      CREATE TABLE IF NOT EXISTS restaurants (
+        id SERIAL PRIMARY KEY,
+        owner INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(100) UNIQUE NOT NULL,
+        address TEXT,
+        latitude DECIMAL,
+        longitude DECIMAL,
+        is_open BOOLEAN DEFAULT TRUE,
+        rating_avg FLOAT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    ''');
 
     /* =========================
        CATEGORY (DÙNG CHUNG)
@@ -88,14 +88,15 @@ Future<String> setupDatabase() async {
     await conn.execute('''
       CREATE TABLE IF NOT EXISTS foods (
         id SERIAL PRIMARY KEY,
-        restaurant_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE CASCADE,
         category_id INTEGER REFERENCES category(id),
         name VARCHAR(100) NOT NULL,
         description TEXT,
         price DECIMAL(10,2) NOT NULL CHECK (price >= 0),
         image_url TEXT,
         rating_avg FLOAT DEFAULT 0,
-        is_available BOOLEAN DEFAULT TRUE
+        is_available BOOLEAN DEFAULT TRUE,
+        preparation_time INTEGER DEFAULT 15
       );
     ''');
 
@@ -109,7 +110,9 @@ Future<String> setupDatabase() async {
         order_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         status_id INTEGER REFERENCES status(id),
         address TEXT NOT NULL,
-        phone_number VARCHAR(15) NOT NULL
+        phone_number VARCHAR(15) NOT NULL,
+        latitude DECIMAL,
+        longitude DECIMAL
       );
     ''');
 
@@ -141,7 +144,7 @@ Future<String> setupDatabase() async {
     await conn.execute('''
       CREATE TABLE IF NOT EXISTS payments (
         id SERIAL PRIMARY KEY,
-        bill_id INTEGER REFERENCES bills(id),
+        bill_id INTEGER UNIQUE REFERENCES bills(id),
         method_id INTEGER REFERENCES method_payment(id),
         status_id INTEGER REFERENCES status(id),
         paid_at TIMESTAMP
@@ -167,8 +170,8 @@ Future<String> setupDatabase() async {
     ========================== */
     await conn.execute('''
       CREATE TABLE IF NOT EXISTS carts (
-        user_id INTEGER REFERENCES users(id),
-        food_id INTEGER REFERENCES foods(id),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        food_id INTEGER REFERENCES foods(id) ON DELETE CASCADE,
         quantity INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (user_id, food_id)
       );

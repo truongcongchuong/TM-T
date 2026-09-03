@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:frontend/core/models/food.dart';
 import 'package:frontend/features/user/services/food_services.dart';
 import 'package:frontend/features/user/profile/profile.dart';
 import 'package:frontend/core/models/category_food.dart';
+import 'package:frontend/core/models/food_response.dart';
 import 'chatbox.dart';
 import 'home_app_bar.dart';
 import 'home_body.dart';
@@ -20,11 +21,12 @@ class _HomePageContentState extends State<HomePageContent> {
   bool showChatBox = false;
   bool isLoading = true;
 
-  List<Food> foods = [];           // Danh sách gốc
-  List<Food> filteredFoods = [];   // Danh sách sau khi search
+  List<FoodResponse> foods = [];
+  List<FoodResponse> filteredFoods = [];
   List<CategoryFood> categories = [];
 
   String _searchQuery = '';
+  Timer? _debounce; // 🔥 debounce
 
   @override
   void initState() {
@@ -40,7 +42,7 @@ class _HomePageContentState extends State<HomePageContent> {
 
       setState(() {
         foods = result;
-        filteredFoods = result;   // Ban đầu hiển thị tất cả
+        filteredFoods = result;
         isLoading = false;
       });
     } catch (e) {
@@ -65,40 +67,53 @@ class _HomePageContentState extends State<HomePageContent> {
   }
 
   // ==================== SEARCH ====================
-  void _onSearchChanged(String query) async{
-    final q = query.toLowerCase().trim();
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-    setState(() {
-      _searchQuery = q;
-    });
+    _debounce = Timer(const Duration(milliseconds: 400), () async {
+      final q = query.toLowerCase().trim();
 
-    if (q.isEmpty) {
+      if (!mounted) return;
+
       setState(() {
-        filteredFoods = foods; // reset lại danh sách gốc
+        _searchQuery = q;
       });
-      return;
-    }
 
-    final result = await foodServices.searchFood(q);
+      if (q.isEmpty) {
+        setState(() {
+          filteredFoods = foods;
+        });
+        return;
+      }
 
-    if (!mounted) return;
+      final result = await foodServices.searchFood(q);
 
-    setState(() {
-      filteredFoods = result;
+      if (!mounted) return;
+
+      setState(() {
+        filteredFoods = result;
+      });
     });
   }
 
   void _onSearchSubmitted() async {
-    // Có thể thêm logic đặc biệt khi người dùng nhấn Enter
     if (_searchQuery.isNotEmpty) {
-      final foods = await foodServices.searchFood(_searchQuery);
+      final result = await foodServices.searchFood(_searchQuery);
+
+      if (!mounted) return;
 
       setState(() {
-        filteredFoods = foods;
+        filteredFoods = result;
       });
     }
   }
   // ================================================
+
+  @override
+  void dispose() {
+    _debounce?.cancel(); // tránh memory leak
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,15 +139,15 @@ class _HomePageContentState extends State<HomePageContent> {
         onChatTap: () {
           setState(() => showChatBox = !showChatBox);
         },
-        onSearchChanged: _onSearchChanged,        // ← Truyền search
-        onSearchSubmitted: _onSearchSubmitted,    // ← Truyền submit
+        onSearchChanged: _onSearchChanged,
+        onSearchSubmitted: _onSearchSubmitted,
       ),
       body: Stack(
         children: [
           HomeBody(
             isDesktop: isDesktop,
             categories: categories,
-            foods: filteredFoods,        // ← Truyền danh sách đã lọc
+            foods: filteredFoods,
           ),
           if (showChatBox)
             Positioned(

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/core/models/food.dart';
+import 'package:frontend/core/models/food_response.dart';
 import 'package:frontend/features/user/home/widgets/food_card.dart'; // Card món ăn bạn đang dùng
 
 class RecommendFoodsSection extends StatelessWidget {
-  final List<Food> foods;
-  final Function(Food) onFoodTap;
+  final List<FoodResponse> foods;
+  final Function(FoodResponse) onFoodTap;
 
   const RecommendFoodsSection({super.key, required this.foods, required this.onFoodTap});
 

@@ -1,4 +1,5 @@
 import 'package:backend/shared/models/bill_model.dart';
+import 'package:backend/shared/models/food_response.dart';
 import 'bill_service.dart';
 import 'package:backend/shared/models/food_model.dart';
 import 'package:backend/shared/models/notification_model.dart';
@@ -26,7 +27,7 @@ class OrderService {
         return false;
       }
 
-      final List<FoodModel?> foods = await Future.wait(
+      final List<FoodResponse?> foods = await Future.wait(
         bill.items.map((items) async {
           final food = await foodService.getFoodById(items.foodId);
           return food;
@@ -37,9 +38,9 @@ class OrderService {
         if (food == null) continue;
 
         groupedByRestaurant.putIfAbsent(
-          food.restaurantId,
+          food.food.restaurantId,
           () => [],
-        ).add(food);
+        ).add(food.food);
       }
 
       for (final entry in groupedByRestaurant.entries) {

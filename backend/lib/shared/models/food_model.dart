@@ -10,6 +10,7 @@ class FoodModel {
   final bool? isAvailable;
   final int? categoryId;
   final int restaurantId;
+  final int preparationTime;
 
   FoodModel({
     this.id,
@@ -21,6 +22,7 @@ class FoodModel {
     this.isAvailable,
     this.categoryId,
     required this.restaurantId,
+    required this.preparationTime
   });
 
   // Dùng Row thay vì PostgreSQLResultRow
@@ -40,6 +42,7 @@ class FoodModel {
       "is_available": isAvailable,
       "category_id": categoryId,
       "restaurant_id": restaurantId,
+      "preparation_time": preparationTime
     };
   }
   factory FoodModel.fromMap(Map<String, dynamic> map) {
@@ -55,6 +58,7 @@ class FoodModel {
       isAvailable: map['is_available'] as bool?,
       categoryId: map['category_id'] as int?,
       restaurantId: map['restaurant_id'] as int,
+      preparationTime: map['preparation_time'] ?? 15,
     );
   }
 }

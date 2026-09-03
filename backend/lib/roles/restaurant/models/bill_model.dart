@@ -1,7 +1,7 @@
 import 'package:postgres/postgres.dart';
 import 'package:backend/shared/enum/status_enum.dart';
 
-class Bill {
+class BillManagerModel {
   final int id;
   final String customer;
   final OrderStatusEnum statusBill;
@@ -10,7 +10,7 @@ class Bill {
   final DateTime orderTime;
   final String address;
 
-  Bill({
+  BillManagerModel({
     required this.id,
     required this.customer,
     required this.statusBill,
@@ -32,8 +32,8 @@ class Bill {
     };
   }
 
-  factory Bill.fromMap(Map<String, dynamic> map) {
-    return Bill(
+  factory BillManagerModel.fromMap(Map<String, dynamic> map) {
+    return BillManagerModel(
       id: map['id'],
       customer: map['customer'],
       statusBill: OrderStatusEnum.fromString(map['status_bill']),
@@ -44,8 +44,8 @@ class Bill {
     );
   }
 
-  factory Bill.fromRow(ResultRow row) {
+  factory BillManagerModel.fromRow(ResultRow row) {
     final data = row.toColumnMap();
-    return Bill.fromMap(data);
+    return BillManagerModel.fromMap(data);
   }
 }

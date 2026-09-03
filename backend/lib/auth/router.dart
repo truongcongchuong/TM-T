@@ -6,6 +6,8 @@ Router authRoutes() {
   final auth = AuthController();
 
   router.post('/login', auth.login);
+  router.post("/register", auth.register);
+  router.post('/restaurant', auth.registerRestaurant);
 
   return router;
 }

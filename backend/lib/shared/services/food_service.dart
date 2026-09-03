@@ -2,24 +2,85 @@ import 'package:postgres/postgres.dart';
 import 'package:backend/core/config/database.dart';
 import 'package:backend/shared/models/food_model.dart';
 import 'package:backend/shared/models/category_food_model.dart';
+import 'package:backend/shared/models/food_response.dart';
 
 class FoodService {
 
-  Future<List<FoodModel>> getAllFoods() async {
+  Future<List<FoodResponse>> getAllFoods() async {
     final Connection conn = await DatabaseConfig.connection();
-    final result = await conn.execute('SELECT * FROM foods');
-    return result.map((row) => FoodModel.fromRow(row)).toList();
+    final result = await conn.execute(
+      Sql.named(
+      '''
+      SELECT 
+        -- FOOD
+        f.id AS food_id,
+        f.name AS food_name,
+        f.price,
+        f.description,
+        f.image_url,
+        f.rating_avg AS food_rating_avg,
+        f.is_available,
+        f.category_id,
+        f.restaurant_id,
+        f.preparation_time,
+
+        -- RESTAURANT
+        r.id AS restaurant_id,
+        r.name AS restaurant_name,
+        r.owner,
+        r.address,
+        r.latitude,
+        r.longitude,
+        r.is_open,
+        r.rating_avg AS restaurant_rating_avg,
+        r.created_at
+
+      FROM foods f
+      JOIN restaurants r ON f.restaurant_id = r.id
+      WHERE r.is_open = true AND f.is_available = true;
+      '''),
+    );
+    return result.map((row) => FoodResponse.fromRow(row)).toList();
   }
 
-  Future<List<FoodModel>> filterFood(String query) async {
+  Future<List<FoodResponse>> filterFood(String query) async {
     final Connection conn = await DatabaseConfig.connection();
 
     final result = await conn.execute(
-      Sql.named("SELECT * FROM foods WHERE name ILIKE @key OR ILIKE @key" ),
+      Sql.named(
+        '''
+        SELECT
+          -- FOOD
+          f.id AS food_id,
+          f.name AS food_name,
+          f.price,
+          f.description,
+          f.image_url,
+          f.rating_avg AS food_rating_avg,
+          f.is_available,
+          f.category_id,
+          f.restaurant_id,
+          f.preparation_time,
+
+          -- RESTAURANT
+          r.id AS restaurant_id,
+          r.name AS restaurant_name,
+          r.owner,
+          r.address,
+          r.latitude,
+          r.longitude,
+          r.is_open,
+          r.rating_avg AS restaurant_rating_avg,
+          r.created_at
+
+        FROM foods f
+        JOIN restaurants r ON f.restaurant_id = r.id 
+        WHERE f.name ILIKE @key OR ILIKE @key
+      '''),
       parameters: {"key": "%$query%"}
     );
 
-    return result.map((row) => FoodModel.fromRow(row)).toList();
+    return result.map((row) => FoodResponse.fromRow(row)).toList();
   }
 
   Future<int> addFood(FoodModel food) async {
@@ -92,17 +153,46 @@ class FoodService {
     }
   }
 
-  Future<FoodModel?> getFoodById(int id) async {
+  Future<FoodResponse?> getFoodById(int id) async {
     final Connection conn = await DatabaseConfig.connection();
 
     try {
       final result = await conn.execute(
-        Sql.named('SELECT * FROM foods WHERE id = @id'),
+        Sql.named(
+          '''
+            SELECT 
+                -- FOOD
+              f.id AS food_id,
+              f.name AS food_name,
+              f.price,
+              f.description,
+              f.image_url,
+              f.rating_avg AS food_rating_avg,
+              f.is_available,
+              f.category_id,
+              f.restaurant_id,
+              f.preparation_time,
+
+              -- RESTAURANT
+              r.id AS restaurant_id,
+              r.name AS restaurant_name,
+              r.owner,
+              r.address,
+              r.latitude,
+              r.longitude,
+              r.is_open,
+              r.rating_avg AS restaurant_rating_avg,
+              r.created_at
+
+            FROM foods f
+            JOIN restaurants r ON f.restaurant_id = r.id 
+            WHERE f.id = @id
+          '''),
         parameters: {"id": id},
       );
 
       if (result.isEmpty) return null;
-      return FoodModel.fromRow(result.first);
+      return FoodResponse.fromRow(result.first);
     } catch (e) {
       print('Error fetching food by id: $e');
       return null;
@@ -123,52 +213,137 @@ class FoodService {
   }
 
   // lấy food by category
-  Future<List<FoodModel>> getFoodsByCategory(int categoryId) async {
+  Future<List<FoodResponse>> getFoodsByCategory(int categoryId) async {
     try {
       final Connection conn = await DatabaseConfig.connection();
 
       if (categoryId == 0) {
         // LẤY TẤT CẢ
         final result = await conn.execute(
-          Sql.named('SELECT * FROM foods WHERE is_available = true'),
+          Sql.named(
+            '''
+              SELECT
+                -- FOOD
+              f.id AS food_id,
+              f.name AS food_name,
+              f.price,
+              f.description,
+              f.image_url,
+              f.rating_avg AS food_rating_avg,
+              f.is_available,
+              f.category_id,
+              f.restaurant_id,
+              f.preparation_time,
+
+              -- RESTAURANT
+              r.id AS restaurant_id,
+              r.name AS restaurant_name,
+              r.owner,
+              r.address,
+              r.latitude,
+              r.longitude,
+              r.is_open,
+              r.rating_avg AS restaurant_rating_avg,
+              r.created_at
+
+            FROM foods f
+            JOIN restaurants r ON f.restaurant_id = r.id 
+            WHERE f.is_available = true
+            '''),
         );
-        return result.map((row) => FoodModel.fromRow(row)).toList();
+        return result.map((row) => FoodResponse.fromRow(row)).toList();
       }
 
       // LỌC THEO CATEGORY
       final result = await conn.execute(
-        Sql.named('SELECT * FROM foods WHERE category_id = @categoryId AND is_available = true'),
+        Sql.named('''
+          SELECT 
+          -- FOOD
+            f.id AS food_id,
+            f.name AS food_name,
+            f.price,
+            f.description,
+            f.image_url,
+            f.rating_avg AS food_rating_avg,
+            f.is_available,
+            f.category_id,
+            f.restaurant_id,
+            f.preparation_time,
+
+            -- RESTAURANT
+            r.id AS restaurant_id,
+            r.name AS restaurant_name,
+            r.owner,
+            r.address,
+            r.latitude,
+            r.longitude,
+            r.is_open,
+            r.rating_avg AS restaurant_rating_avg,
+            r.created_at
+
+          FROM foods f
+          JOIN restaurants r ON f.restaurant_id = r.id  
+          WHERE f.category_id = @categoryId AND f.is_available = true
+        '''),
         parameters: {"categoryId": categoryId},
       );
 
-      return result.map((row) => FoodModel.fromRow(row)).toList();
+      return result.map((row) => FoodResponse.fromRow(row)).toList();
     } catch (e) {
       print('Error fetching foods by category: $e');
       return [];
     }
   }
 
-  Future<List<FoodModel>> searchFood(String query) async {
+  Future<List<FoodResponse>> searchFood(String query) async {
     final conn = await DatabaseConfig.connection();
 
     final result = await conn.execute(
       Sql.named('''
         SELECT 
-          *,
+          -- FOOD
+          f.id AS food_id,
+          f.name AS food_name,
+          f.price,
+          f.description,
+          f.image_url,
+          f.rating_avg AS food_rating_avg,
+          f.is_available,
+          f.category_id,
+          f.restaurant_id,
+          f.preparation_time,
+
+          -- RESTAURANT
+          r.id AS restaurant_id,
+          r.name AS restaurant_name,
+          r.owner,
+          r.address,
+          r.latitude,
+          r.longitude,
+          r.is_open,
+          r.rating_avg AS restaurant_rating_avg,
+          r.created_at,
+
+          -- SCORE (search ranking)
           CASE
-            WHEN name ILIKE @query THEN 3
-            WHEN description ILIKE  @query THEN 2
+            WHEN f.name ILIKE @query THEN 3
+            WHEN f.description ILIKE @query THEN 2
             ELSE 1
           END AS score
-        FROM foods
-        WHERE name ILIKE @query
-          OR description ILIKE  @query
-        ORDER BY score DESC, rating_avg DESC
+
+        FROM foods f
+        JOIN restaurants r ON f.restaurant_id = r.id
+
+        WHERE (f.name ILIKE @query OR f.description ILIKE @query)
+          AND f.is_available = true
+          AND r.is_open = true
+
+        ORDER BY score DESC, f.rating_avg DESC
         LIMIT 20
       '''),
       parameters: {'query': '%$query%'},
     );
 
-    return result.map((row) => FoodModel.fromRow(row)).toList();
+    return result.map((row) => FoodResponse.fromRow(row)).toList();
   }
 }
